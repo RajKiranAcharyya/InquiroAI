@@ -6,4 +6,3 @@ transformers==4.32.0
 torch==2.8.0
 python-docx
 python-pptx
-exceptions
