@@ -1,61 +1,67 @@
 # InquiroAI
-Inquiro is an open-source AI tool for interactive Q&amp;A over PDFs, Word, and PowerPoint files. It combines semantic search with LLMs to provide precise, context-aware answers via an intuitive chat interface. Designed for academic use, it offers local control, extensibility, and a polished user experience for effective knowledge exploration.
 
+InquiroAI is a document question-answering app that retrieves relevant text and answers with source references.
 
-## Overview
+## Features
 
-**Inquiro** is an open-source AI-powered assistant designed for interactive question answering over PDF, Word, and PowerPoint documents. It combines semantic search using dense vector embeddings with large language models to deliver precise, context-aware answers within an intuitive chat interface. Tailored for academic and research use, it offers full local control, extensibility, and a polished user experience for effective knowledge exploration.
+- Upload PDF, DOCX, and PPTX files in the Streamlit app.
+- Extract selectable PDF text, Word paragraphs and tables, and PowerPoint slide text.
+- Create local sentence-transformer embeddings and search them with Chroma using cosine distance.
+- Generate answers from retrieved document context with the Gemini API.
+- Show source file and page, slide, paragraph, or table row for retrieved text.
+- Ask the model to use an exact refusal response when the documents do not contain the answer.
 
----
+## How it works
 
-## Key Features
+1. The app extracts text while retaining each unit's file and location.
+2. Text is split into overlapping chunks without crossing page, slide, or paragraph boundaries.
+3. Sentence Transformers creates local embeddings, which Chroma indexes for semantic search.
+4. The app retrieves the closest chunks and sends those chunks with the question to Gemini.
+5. The answer and source locations are displayed in the chat.
 
-- **Multiformat Document Support:** Upload and analyze PDFs, DOCX, and PPTX files seamlessly.
-- **Semantic Search + Generative QA:** Utilizes Sentence Transformers and FAISS for accurate semantic search alongside Google Flan-T5 for natural language answers.
-- **Token-Length Aware Context Handling:** Manages LLM input limits to ensure stable and reliable responses.
-- **Custom Document Chunking:** Breaks down documents into balanced chunks for efficient embedding and retrieval.
-- **Interactive Chat UI:** Streamlit-based interface with conversation history and styled chat messages.
-- **Open-source and Modular:** Easily customizable components for embedding, search, and generation.
-- **Local Deployment:** Run the assistant entirely on your machine for privacy and cost-effectiveness.
+## Run locally
 
+Use Python 3.10 or newer. From the project folder in PowerShell:
 
-- Upload PDFs, Word documents, or PowerPoint files via the sidebar.
-- Ask questions in the input box and receive AI-generated answers grounded in your documents.
-- Review your conversation history within the chat interface.
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+```
 
----
+Add your Gemini API key to `.env`:
 
-## Project Structure
+```text
+GEMINI_API_KEY=your-key
+GEMINI_MODEL=gemini-3.5-flash
+```
 
-| File           | Description                                         |
-|----------------|-----------------------------------------------------|
-| `app.py`       | Streamlit frontend and main application logic       |
-| `pdf_utils.py` | Multi-format document parsing and text extraction   |
-| `embeddings.py`| Embedding generation using Sentence Transformers    |
-| `vectorstore.py`| FAISS-based vector storage and semantic search     |
-| `qa_engine.py` | Core engine combining semantic search and LLM QA   |
-| `requirements.txt` | Python dependencies                               |
+Then start the app:
 
----
+```powershell
+streamlit run app.py
+```
 
-## Future Improvements
+Upload documents from the sidebar. The first run downloads the embedding model; asking a question requires internet access and a valid Gemini API key.
 
-- Support additional document types (e.g., HTML, EPUB).
-- Add summarization and multi-turn dialogue memory.
-- Provide user authentication and secure data handling.
-- Enable cloud deployment with Docker.
-- Enhance UI with exportable chat history and richer chat bubbles.
+## Privacy and limitations
 
----
+- Embeddings and retrieval run locally in memory for the current app session.
+- Retrieved document excerpts and the question are sent to Gemini to generate an answer. Do not upload sensitive documents unless you are comfortable with that.
+- Gemini answer generation uses the Google GenAI `generateContent` API with a 45-second request timeout.
+- Scanned PDFs without selectable text are not OCR-processed.
+- The model can still produce incorrect answers or fail to refuse when evidence is missing. Check its citations against the original documents.
+- PDF sources use page numbers, PPTX sources use slide numbers, and DOCX sources use paragraph or table-row numbers.
 
-## License
+## Project files
 
-MIT License © 2025 Your Name
-
----
-
-## Contact & Contributions
-
-Feel free to open issues or submit pull requests.  
-Email: your.email@example.com  
-GitHub: [yourusername](https://github.com/yourusername)
+| File | Purpose |
+| --- | --- |
+| `app.py` | Streamlit upload and chat interface |
+| `pdf_utils.py` | Text extraction with source locations for each supported format |
+| `embeddings.py` | Loads and uses the local Sentence Transformer model |
+| `vectorstore.py` | Stores and retrieves embedded chunks with Chroma |
+| `qa_engine.py` | Chunks documents, builds grounded prompts, and returns answers and sources |
+| `llm.py` | Calls Gemini and reports API configuration or generation errors |
+| `config.py` | Shared model and chunking settings |

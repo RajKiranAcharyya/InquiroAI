@@ -1,58 +1,73 @@
-import fitz  # PyMuPDF
 from io import BytesIO
+
+import pymupdf
 from docx import Document
 from pptx import Presentation
 
+
 def extract_text_from_docx(file):
-    doc = Document(BytesIO(file.read()))
-    full_text = []
-    for para in doc.paragraphs:
-        full_text.append(para.text)
-    return "\n".join(full_text)
+    document = Document(BytesIO(file.getvalue()))
+    units = []
+    for paragraph_number, paragraph in enumerate(document.paragraphs, start=1):
+        if paragraph.text.strip():
+            units.append(
+                {
+                    "file": file.name,
+                    "source": f"paragraph {paragraph_number}",
+                    "text": paragraph.text.strip(),
+                }
+            )
+    for table_number, table in enumerate(document.tables, start=1):
+        for row_number, row in enumerate(table.rows, start=1):
+            text = " | ".join(cell.text.strip() for cell in row.cells).strip()
+            if text:
+                units.append(
+                    {
+                        "file": file.name,
+                        "source": f"table {table_number}, row {row_number}",
+                        "text": text,
+                    }
+                )
+    return units
+
 
 def extract_text_from_pptx(file):
-    presentation = Presentation(BytesIO(file.read()))
-    full_text = []
-    for slide in presentation.slides:
+    presentation = Presentation(BytesIO(file.getvalue()))
+    units = []
+    for slide_number, slide in enumerate(presentation.slides, start=1):
+        slide_text = []
         for shape in slide.shapes:
-            if hasattr(shape, "text"):
-                full_text.append(shape.text)
-    return "\n".join(full_text)
+            if hasattr(shape, "text") and shape.text.strip():
+                slide_text.append(shape.text.strip())
+        if slide_text:
+            units.append(
+                {
+                    "file": file.name,
+                    "source": f"slide {slide_number}",
+                    "text": "\n".join(slide_text),
+                }
+            )
+    return units
+
 
 def extract_text_from_files(files):
-    """Extract text from a list of file-like objects (pdf, docx, pptx) and return as a list of documents."""
-    documents = []
+    document_units = []
     for file in files:
         filename = file.name.lower()
-        file.seek(0)  # Reset file pointer before reading
         if filename.endswith(".pdf"):
-            doc = fitz.open(stream=file.read(), filetype="pdf")
-            full_text = ""
-            for page in doc:
-                full_text += page.get_text()
-            documents.append(full_text)
+            with pymupdf.open(stream=file.getvalue(), filetype="pdf") as document:
+                for page_number, page in enumerate(document, start=1):
+                    text = page.get_text().strip()
+                    if text:
+                        document_units.append(
+                            {
+                                "file": file.name,
+                                "source": f"page {page_number}",
+                                "text": text,
+                            }
+                        )
         elif filename.endswith(".docx"):
-            file.seek(0)
-            documents.append(extract_text_from_docx(file))
+            document_units.extend(extract_text_from_docx(file))
         elif filename.endswith(".pptx"):
-            file.seek(0)
-            documents.append(extract_text_from_pptx(file))
-        else:
-            documents.append("")  # Unsupported file type
-    return documents
-
-
-
-
-# import fitz 
-
-# def extract_text_from_pdfs(pdf_files):
-#     """Extract text from a list of PDF file-like objects and return as a list of documents."""
-#     documents = []
-#     for pdf_file in pdf_files:
-#         doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
-#         full_text = ""
-#         for page in doc:
-#             full_text += page.get_text()
-#         documents.append(full_text)
-#     return documents
+            document_units.extend(extract_text_from_pptx(file))
+    return document_units
