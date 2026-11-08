@@ -6,7 +6,7 @@ InquiroAI is a document question-answering app that retrieves relevant text and 
 
 ![InquiroAI upload screen](./screenshots/inquiroai.png)
 
-![InquiroAI follow-up questions with source citations](./screenshots/inquiroai-follow-up.png)
+![InquiroAI answering a question about the NIST Cybersecurity Framework with page citations](./screenshots/inquiroai-follow-up.png)
 
 ## Features
 
