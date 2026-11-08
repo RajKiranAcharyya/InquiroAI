@@ -2,6 +2,10 @@
 
 InquiroAI is a document question-answering app that retrieves relevant text and answers with source references.
 
+## Screenshot
+
+![InquiroAI upload screen](./screenshots/inquiroai.png)
+
 ## Features
 
 - Upload PDF, DOCX, and PPTX files in the Streamlit app.
