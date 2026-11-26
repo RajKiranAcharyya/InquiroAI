@@ -1,37 +1,40 @@
 import os
 
 from dotenv import load_dotenv
-from google import genai
-from google.genai import errors, types
+from groq import APIConnectionError, APIStatusError, APITimeoutError, Groq
 
-from config import GEMINI_MODEL, TEMPERATURE
+from config import GROQ_MODEL_ID, TEMPERATURE
 
 
 def generate(prompt):
     load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        raise ValueError("Create a .env file and add GEMINI_API_KEY before asking questions.")
+        raise ValueError("Create a .env file and add GROQ_API_KEY before asking questions.")
 
-    client = genai.Client(
-        api_key=api_key,
-        http_options=types.HttpOptions(timeout=45000),
-    )
+    model_id = os.getenv("GROQ_MODEL_ID", GROQ_MODEL_ID)
+    client = Groq(api_key=api_key, timeout=45.0)
+
     try:
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(temperature=TEMPERATURE),
+        response = client.chat.completions.create(
+            model=model_id,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=TEMPERATURE,
         )
-    except errors.APIError as error:
+    except APIStatusError as error:
         raise RuntimeError(
-            f"Gemini request failed (HTTP {error.code}): {error.message}"
+            f"Groq request failed (HTTP {error.status_code}): {error.message}"
         ) from error
-    except (TimeoutError, ConnectionError) as error:
+    except (APITimeoutError, APIConnectionError, TimeoutError, ConnectionError) as error:
         raise RuntimeError(
-            "Gemini did not respond within 45 seconds. Check your connection and try again."
+            "Groq did not respond within 45 seconds. Check your connection and try again."
         ) from error
 
-    if not response.text:
-        raise RuntimeError("Gemini returned an empty answer. Please try again.")
-    return response.text.strip()
+    content = (
+        response.choices[0].message.content
+        if response.choices and response.choices[0].message
+        else None
+    )
+    if not content or not content.strip():
+        raise RuntimeError("Groq returned an empty answer. Please try again.")
+    return content.strip()
